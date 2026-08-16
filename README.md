@@ -1,99 +1,99 @@
-# Sphere Gear — генератор сферических шестерён
+# Sphere Gear — Spherical Gear Generator
 
-Генерация двух сопряжённых шестерён:
+Generates two mating gears:
 
-- **Spherical Gear** — шестерня в форме сферы (пересечение двух тел вращения зубчатого профиля)
-- **Monopole Gear** — цилиндрическая шестерня, зубья которой нарезаны обкаткой сферической шестернёй
+- **Spherical Gear** — a sphere-shaped gear (intersection of two revolved involute profiles)
+- **Monopole Gear** — a cylindrical gear whose teeth are cut by rolling the spherical gear around it
 
-Обе шестерни зацепляются друг с другом.
+Both gears mesh together with the correct conjugate tooth profile.
 
-## Как это устроено
+## How It Works
 
 ### Spherical Gear (`spherical_gear.py`)
 
-1. Библиотека `py_gearworks` строит точный эвольвентный профиль зубьев (Wire в плоскости XY)
-2. Профиль разрезается пополам дважды — по оси X и по оси Y, получаются два полуконтура
-3. Каждый полуконтур вращается (`revolve`) вокруг своей оси — получаются два тела вращения
-4. Пересечение (`^`) двух тел через `manifold3d` — результат: сфера с зубчатым профилем по обеим осям
+1. `py_gearworks` builds a precise involute tooth profile (Wire in the XY plane)
+2. The profile is split in half twice — along X and along Y — producing two half-contours
+3. Each half-contour is revolved around its respective axis — producing two solids of revolution
+4. Boolean intersection (`^`) via `manifold3d` yields a sphere with teeth along both axes
 
 ```
-     Профиль зуба (XY)
+     Tooth profile (XY)
             │
     ┌───────┼───────┐
-    │  Половина Y≥0  │ → revolve вокруг X → Тело 1 ─┐
-    │       │       │                                 ├─ Пересечение → Сфера
-    │  Половина X≥0  │ → revolve вокруг Y → Тело 2 ─┘
+    │  Half Y ≥ 0   │ → revolve around X → Body 1 ─┐
+    │       │       │                                ├─ Intersection → Sphere
+    │  Half X ≥ 0   │ → revolve around Y → Body 2 ─┘
     └───────┼───────┘
 ```
 
 ### Monopole Gear (`monopole_gear.py`)
 
-1. Создаётся цилиндрическая заготовка (с отверстием и фасками)
-2. Строится 3D-каттер — тело вращения зубчатого профиля вокруг оси X (имитация сферической шестерни)
-3. Каттер обкатывает заготовку за 720 шагов:
-   - На каждом шаге каттер поворачивается вокруг своей оси (spin) и смещается по орбите вокруг заготовки
-   - Передаточное число spin/orbit = `MONOPOLE_TEETH / TEETH`
-4. Результат — цилиндр с криволинейными зубьями, идеально сопряжёнными со сферической шестернёй
+1. A cylindrical blank is created (with a bore hole and chamfers)
+2. A 3D cutter is built — the tooth profile revolved around the X axis (simulating the spherical gear)
+3. The cutter rolls around the blank in 720 steps:
+   - At each step the cutter spins around its own axis and orbits around the blank
+   - Gear ratio: spin/orbit = `MONOPOLE_TEETH / TEETH`
+4. The result is a cylinder with curved teeth perfectly conjugate to the spherical gear
 
 ```
-   Каттер (тело вращения)
+    Cutter (revolved body)
         ╭───╮
-       ╱     ╲      orbit (вокруг Z)
+       ╱     ╲      orbit (around Z)
       │   ●   │  ←──────────────╮
        ╲     ╱                  │
         ╰───╯                   │
-    spin (вокруг X)        ╭────┴────╮
-                           │ Заготовка│
-                           │ (цилиндр)│
+    spin (around X)        ╭────┴────╮
+                           │  Blank  │
+                           │(cylinder)│
                            ╰─────────╯
 ```
 
-### Общие утилиты (`utils.py`)
+### Shared Utilities (`utils.py`)
 
-Функция `shape_to_manifold` — конвертирует build123d Shape в manifold3d Manifold через тесселляцию и trimesh.
+`shape_to_manifold` — converts a build123d Shape into a manifold3d Manifold via tessellation and trimesh.
 
-### Конфигурация (`config.py`)
+### Configuration (`config.py`)
 
-Все параметры в одном месте: диаметр, число зубьев, углы, коэффициенты, зазоры.
+All parameters in one place: diameter, tooth count, angles, coefficients, clearances.
 
-## Установка зависимостей
+## Installation
 
-Python **3.10+** (проверено на 3.13).
+Python **3.10+** (tested on 3.13).
 
 ```bash
 pip install build123d numpy trimesh manifold3d py-gearworks
 ```
 
-| Пакет | Для чего |
+| Package | Purpose |
 |---|---|
-| `build123d` | Параметрическое 3D-моделирование (обёртка над OpenCascade) |
-| `py-gearworks` | Точный эвольвентный профиль зубьев |
-| `manifold3d` | Быстрые булевы операции с мешами (вместо медленного OCCT) |
-| `trimesh` | Работа с треугольными мешами, экспорт в STL |
-| `numpy` | Числовые массивы для мешей |
+| `build123d` | Parametric 3D modeling (OpenCascade wrapper) |
+| `py-gearworks` | Precise involute tooth profile generation |
+| `manifold3d` | Fast boolean mesh operations (replaces slow OCCT booleans) |
+| `trimesh` | Triangle mesh processing and STL export |
+| `numpy` | Numeric arrays for mesh data |
 
-> **Примечание:** `build123d` тянет за собой OpenCascade (~300 МБ), первая установка может занять время.
+> **Note:** `build123d` pulls in OpenCascade (~300 MB), the first install may take a while.
 
-## Запуск
+## Usage
 
 ```bash
-# Сгенерировать сферическую шестерню
+# Generate the spherical gear
 python spherical_gear.py
 
-# Сгенерировать monopole gear (занимает несколько минут)
+# Generate the monopole gear (takes several minutes)
 python monopole_gear.py
 ```
 
-Результат — файлы `spherical_gear.stl` и `monopole_gear.stl` в текущей директории.
+Output: `spherical_gear.stl` and `monopole_gear.stl` in the current directory.
 
-## Настройка параметров
+## Configuration
 
-Все параметры задаются в `config.py`:
+All parameters are set in `config.py`:
 
 ```python
-DIAMETER = 50.0           # Внешний диаметр сферы (мм)
-TEETH = 32                # Количество зубьев сферической шестерни
-PRESSURE_ANGLE_DEG = 20.0 # Угол зацепления (стандарт 20°)
-MONOPOLE_TEETH = 16       # Зубья monopole (передаточное число = TEETH:MONOPOLE_TEETH)
-MONOPOLE_BORE_DIAMETER = 8.0  # Отверстие в monopole gear (мм)
+DIAMETER = 50.0           # Outer sphere diameter (mm)
+TEETH = 32                # Spherical gear tooth count
+PRESSURE_ANGLE_DEG = 20.0 # Pressure angle (standard 20°)
+MONOPOLE_TEETH = 16       # Monopole teeth (gear ratio = TEETH:MONOPOLE_TEETH)
+MONOPOLE_BORE_DIAMETER = 8.0  # Monopole gear bore diameter (mm)
 ```
