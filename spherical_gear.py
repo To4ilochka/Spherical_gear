@@ -23,6 +23,9 @@ gear = pgw.SpurGear(
 # Получаем замкнутый Wire (контур зубьев) в плоскости XY
 gear_wire = gear.build_boundary_wire(z_ratio=0)
 
+if getattr(config, 'INVERT_PROFILE', False):
+    gear_wire = gear_wire.rotate(Axis.Z, 180.0 / config.TEETH)
+
 # Превращаем Wire в Sketch (заливаем в грань)
 with BuildSketch() as fig1:
     with BuildLine():
@@ -70,6 +73,48 @@ print("Converting to Manifold...")
 m1 = shape_to_manifold(body1)
 m2 = shape_to_manifold(body2)
 m_res = m1 ^ m2
+
+print("Cutting gear in half (Z >= 0) for 3D printing...")
+with BuildPart() as b_half:
+    Box(cut_size * 2, cut_size * 2, cut_size * 2, align=(Align.CENTER, Align.CENTER, Align.MIN))
+m_half = shape_to_manifold(b_half.part)
+m_res = m_res ^ m_half
+
+if getattr(config, 'ENABLE_PINS', True):
+    print("Adding hexagonal pin holes...")
+    with BuildPart() as b_holes:
+        with BuildSketch(Plane.XY):
+            with Locations((config.PIN_OFFSET, config.PIN_OFFSET),
+                           (config.PIN_OFFSET, -config.PIN_OFFSET),
+                           (-config.PIN_OFFSET, config.PIN_OFFSET),
+                           (-config.PIN_OFFSET, -config.PIN_OFFSET)):
+                RegularPolygon(radius=(config.PIN_DIAMETER / 2) + config.PIN_TOLERANCE, side_count=6)
+        extrude(amount=config.PIN_HOLE_DEPTH)
+    m_holes = shape_to_manifold(b_holes.part)
+    m_res = m_res - m_holes
+
+if getattr(config, 'ENABLE_SCREWS', True):
+    print("Adding screw clearance holes and counterbores...")
+    with BuildPart() as b_screws:
+        # Сквозное отверстие под ножку винта
+        with BuildSketch(Plane.XY):
+            with Locations((config.PIN_OFFSET, config.PIN_OFFSET),
+                           (config.PIN_OFFSET, -config.PIN_OFFSET),
+                           (-config.PIN_OFFSET, config.PIN_OFFSET),
+                           (-config.PIN_OFFSET, -config.PIN_OFFSET)):
+                Circle(radius=config.SCREW_CLEARANCE_HOLE / 2)
+        extrude(amount=config.DIAMETER)
+
+        # Углубление под шляпку винта
+        with BuildSketch(Plane.XY.offset(config.PIN_HOLE_DEPTH + config.SCREW_CLAMP_THICKNESS)):
+            with Locations((config.PIN_OFFSET, config.PIN_OFFSET),
+                           (config.PIN_OFFSET, -config.PIN_OFFSET),
+                           (-config.PIN_OFFSET, config.PIN_OFFSET),
+                           (-config.PIN_OFFSET, -config.PIN_OFFSET)):
+                Circle(radius=config.SCREW_HEAD_DIAMETER / 2)
+        extrude(amount=config.DIAMETER)
+    m_screws = shape_to_manifold(b_screws.part)
+    m_res = m_res - m_screws
 
 print("Exporting results...")
 out_mesh = m_res.to_mesh()

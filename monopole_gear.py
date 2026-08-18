@@ -60,6 +60,9 @@ gear = pgw.SpurGear(
 )
 gear_wire = gear.build_boundary_wire(z_ratio=0)
 
+if getattr(config, 'INVERT_PROFILE', False):
+    gear_wire = gear_wire.rotate(Axis.Z, 180.0 / config.TEETH)
+
 with BuildSketch() as fig1:
     with BuildLine():
         add(gear_wire)
@@ -99,7 +102,7 @@ for i in range(num_steps):
     orbit_angle = i * orbit_step
     spin_angle = i * spin_step
     
-    m_cutter_inst = m_cutter.rotate([spin_angle, 0, 0])
+    m_cutter_inst = m_cutter.rotate([0, 0, spin_angle])
     m_cutter_inst = m_cutter_inst.translate([path_radius, 0, 0])
     m_cutter_inst = m_cutter_inst.rotate([0, 0, orbit_angle])
     
