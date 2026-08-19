@@ -96,8 +96,9 @@ if getattr(config, 'ENABLE_PINS', True):
 if getattr(config, 'ENABLE_SCREWS', True):
     print("Adding screw clearance holes and counterbores...")
     with BuildPart() as b_screws:
-        # Сквозное отверстие под ножку винта
-        with BuildSketch(Plane.XY):
+        # Сквозное отверстие для винта (начинается чуть выше, оставляя сплошной "жертвенный слой" (sacrificial bridge)
+        # чтобы принтер мог перекинуть мост над шестигранным отверстием без провисания в воздухе)
+        with BuildSketch(Plane.XY.offset(config.PIN_HOLE_DEPTH + config.SACRIFICIAL_BRIDGE_THICKNESS)):
             with Locations((config.PIN_OFFSET, config.PIN_OFFSET),
                            (config.PIN_OFFSET, -config.PIN_OFFSET),
                            (-config.PIN_OFFSET, config.PIN_OFFSET),
